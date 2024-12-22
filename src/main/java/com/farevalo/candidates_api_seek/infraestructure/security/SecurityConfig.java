@@ -10,8 +10,11 @@ import org.springframework.security.authentication.AuthenticationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.SecurityBuilder;
+import org.springframework.security.config.annotation.web.WebSecurityConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -20,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 
 
 @Configuration
@@ -33,22 +37,23 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())  // Consider enabling CSRF in production
+                .csrf(AbstractHttpConfigurer::disable)  // Consider enabling CSRF in production
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 .requestMatchers(HttpMethod.GET, "/api/candidates/**").hasRole("USR")
                                 .requestMatchers(HttpMethod.POST, "/api/candidates/**").hasRole("USR")
                                 .requestMatchers(HttpMethod.PUT, "/api/candidates/**").hasRole("USR")
                                 .requestMatchers(HttpMethod.DELETE, "/api/candidates/**").hasRole("USR")
-                                .requestMatchers("/swagger-ui/**").permitAll()  // Permitir acceso a Swagger UI
-                                .requestMatchers("/v3/api-docs/**").permitAll()  // Permitir acceso a la documentación de la API
-                                .requestMatchers("/swagger-ui.html").permitAll()  // Permitir acceso a Swagger UI
+                                //.requestMatchers(AUTH_WHITELIST).permitAll()
                                 .requestMatchers(AUTH_WHITELIST).permitAll()
-                                .anyRequest().permitAll()
+                                .anyRequest().authenticated()
                 )
+                .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));  // Recommended for REST APIs
@@ -56,10 +61,7 @@ public class SecurityConfig {
         return http.build();
     }
     private static final String[] AUTH_WHITELIST= {
-        "/api/v1/auth/**",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/swagger-ui/index.html"
+            "/api/v1/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**", "/webjars/**"
     };
 
     @Bean
